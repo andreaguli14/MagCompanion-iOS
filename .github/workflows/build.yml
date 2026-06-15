@@ -19,25 +19,25 @@ jobs:
       - name: Genera progetto Xcode
         run: xcodegen generate
 
-      - name: Build unsigned
+      - name: Archive (unsigned)
         run: |
-          xcodebuild \
+          xcodebuild archive \
             -scheme MagCompanion \
             -configuration Release \
             -sdk iphoneos \
             -destination "generic/platform=iOS" \
+            -archivePath "$PWD/build/MagCompanion.xcarchive" \
             CODE_SIGN_IDENTITY="" \
             CODE_SIGNING_REQUIRED=NO \
             CODE_SIGNING_ALLOWED=NO \
-            ONLY_ACTIVE_ARCH=NO \
-            CONFIGURATION_BUILD_DIR="$PWD/build/app" \
-            build
+            SKIP_INSTALL=NO
 
-      - name: Crea IPA
+      - name: Crea IPA dall'archivio
         run: |
           mkdir -p build/Payload
-          cp -r build/app/MagCompanion.app build/Payload/
+          cp -r "build/MagCompanion.xcarchive/Products/Applications/MagCompanion.app" build/Payload/
           cd build && zip -r MagCompanion.ipa Payload/
+          echo "IPA: $(du -sh MagCompanion.ipa)"
 
       - name: Upload artifact
         uses: actions/upload-artifact@v4
