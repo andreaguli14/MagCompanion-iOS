@@ -321,6 +321,7 @@ struct ContentView: View {
 // ── Calibration Screen ────────────────────────────────────────────────────────
 struct CalibrationView: View {
     @ObservedObject var ctrl: MagController
+    @State private var rotation: Double = 0
 
     var body: some View {
         VStack(spacing: 28) {
@@ -329,7 +330,12 @@ struct CalibrationView: View {
             Image(systemName: "arrow.triangle.2.circlepath")
                 .font(.system(size: 64))
                 .foregroundStyle(.white)
-                .symbolEffect(.rotate, options: .repeating)
+                .rotationEffect(.degrees(rotation))
+                .onAppear {
+                    withAnimation(.linear(duration: 2).repeatForever(autoreverses: false)) {
+                        rotation = 360
+                    }
+                }
 
             Text("Calibra il magnetometro")
                 .font(.title2.bold())
