@@ -34,20 +34,37 @@ jobs:
             ENABLE_BITCODE=NO \
             build
 
-      - name: Crea IPA con ditto (formato Apple-nativo)
+      - name: Crea IPA
         run: |
           APP=$(find build/derived/Build/Products -name "MagCompanion.app" -type d | head -1)
           echo "App trovata: $APP"
-          ls -la "$APP/" || echo "APP non trovata"
+
+          if [ -z "$APP" ]; then
+            echo "ERROR: MagCompanion.app non trovata in derived data"
+            find build/derived -maxdepth 6 | head -30
+            exit 1
+          fi
+
+          # Verifica binary
+          BINARY="$APP/MagCompanion"
+          if [ ! -f "$BINARY" ]; then
+            echo "ERROR: binary non trovato"
+            ls -la "$APP/"
+            exit 1
+          fi
+          echo "Binary: $(file "$BINARY")"
+
+          # Sostituisce il plist compilato (potrebbe essere corrotto) con il sorgente noto-buono
+          cp MagCompanion/Info.plist "$APP/Info.plist"
+          echo "Info.plist copiato:"
+          cat "$APP/Info.plist"
 
           mkdir -p build/Payload
           cp -r "$APP" build/Payload/MagCompanion.app
 
-          # Usa ditto invece di zip per struttura IPA canonica
           cd build
           ditto -c -k --sequesterRsrc --keepParent Payload MagCompanion.ipa
           echo "IPA: $(du -sh MagCompanion.ipa)"
-          echo "=== Contenuto IPA ==="
           unzip -l MagCompanion.ipa | head -20
 
       - name: Upload artifact
