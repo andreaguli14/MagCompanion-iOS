@@ -19,7 +19,7 @@ jobs:
       - name: Genera progetto Xcode
         run: xcodegen generate
 
-      - name: Archive (unsigned)
+      - name: Archive (ad-hoc sign per ottenere il binary)
         run: |
           xcodebuild archive \
             -scheme MagCompanion \
@@ -27,15 +27,25 @@ jobs:
             -sdk iphoneos \
             -destination "generic/platform=iOS" \
             -archivePath "$PWD/build/MagCompanion.xcarchive" \
-            CODE_SIGN_IDENTITY="" \
+            CODE_SIGN_IDENTITY="-" \
             CODE_SIGNING_REQUIRED=NO \
-            CODE_SIGNING_ALLOWED=NO \
-            SKIP_INSTALL=NO
+            CODE_SIGNING_ALLOWED=YES \
+            SKIP_INSTALL=NO \
+            ENABLE_BITCODE=NO
+
+      - name: Debug contenuto archivio
+        run: |
+          echo "=== Struttura xcarchive ==="
+          find build/MagCompanion.xcarchive -maxdepth 6 | head -40
+          echo "=== Binary presente? ==="
+          file build/MagCompanion.xcarchive/Products/Applications/MagCompanion.app/MagCompanion 2>&1 || echo "NON TROVATO al path standard"
 
       - name: Crea IPA dall'archivio
         run: |
+          APP=$(find build/MagCompanion.xcarchive -name "*.app" -type d | head -1)
+          echo "App trovata: $APP"
           mkdir -p build/Payload
-          cp -r "build/MagCompanion.xcarchive/Products/Applications/MagCompanion.app" build/Payload/
+          cp -r "$APP" build/Payload/
           cd build && zip -r MagCompanion.ipa Payload/
           echo "IPA: $(du -sh MagCompanion.ipa)"
 
