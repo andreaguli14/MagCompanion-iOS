@@ -3,7 +3,6 @@ options:
   bundleIdPrefix: com.indoornav
   deploymentTarget:
     iOS: "16.0"
-  xcodeVersion: "15"
 
 targets:
   MagCompanion:
@@ -16,9 +15,6 @@ targets:
         PRODUCT_BUNDLE_IDENTIFIER: com.indoornav.magcompanion
         SWIFT_VERSION: "5.9"
         ENABLE_BITCODE: NO
-        TARGETED_DEVICE_FAMILY: "1"        # iPhone only
+        TARGETED_DEVICE_FAMILY: "1"
         IPHONEOS_DEPLOYMENT_TARGET: "16.0"
         INFOPLIST_FILE: MagCompanion/Info.plist
-        CODE_SIGN_IDENTITY: ""
-        CODE_SIGNING_REQUIRED: NO
-        CODE_SIGNING_ALLOWED: NO
