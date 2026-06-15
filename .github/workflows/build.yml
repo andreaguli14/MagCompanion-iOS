@@ -46,15 +46,13 @@ jobs:
           fi
 
           echo "Binary: $(file "$APP/MagCompanion")"
-
-          # Usa Info.plist sorgente (noto-buono)
-          cp MagCompanion/Info.plist "$APP/Info.plist"
+          echo "Info.plist type: $(file "$APP/Info.plist")"
 
           mkdir -p build/Payload
           cp -r "$APP" build/Payload/MagCompanion.app
 
           cd build
-          ditto -c -k --sequesterRsrc --keepParent Payload MagCompanion.ipa
+          zip -r MagCompanion.ipa Payload/
           echo "IPA: $(du -sh MagCompanion.ipa)"
           unzip -l MagCompanion.ipa | head -20
 
