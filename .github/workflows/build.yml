@@ -1,0 +1,66 @@
+name: Build MagCompanion IPA
+
+on:
+  push:
+    branches: [main, master]
+  workflow_dispatch:
+
+jobs:
+  build:
+    runs-on: macos-15
+
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      - name: Install xcodegen
+        run: brew install xcodegen
+
+      - name: Genera progetto Xcode
+        run: xcodegen generate
+
+      - name: Build unsigned
+        run: |
+          xcodebuild \
+            -scheme MagCompanion \
+            -configuration Release \
+            -sdk iphoneos \
+            -destination "generic/platform=iOS" \
+            -derivedDataPath "$PWD/build/derived" \
+            CODE_SIGN_IDENTITY="" \
+            CODE_SIGNING_REQUIRED=NO \
+            CODE_SIGNING_ALLOWED=NO \
+            ONLY_ACTIVE_ARCH=NO \
+            ENABLE_BITCODE=NO \
+            build
+
+      - name: Crea IPA
+        run: |
+          APP=$(find build/derived/Build/Products -name "MagCompanion.app" -type d | head -1)
+          echo "App: $APP"
+          ls -la "$APP/"
+
+          if [ ! -f "$APP/MagCompanion" ]; then
+            echo "ERROR: binary non trovato"
+            exit 1
+          fi
+
+          echo "Binary: $(file "$APP/MagCompanion")"
+
+          # Usa Info.plist sorgente (noto-buono)
+          cp MagCompanion/Info.plist "$APP/Info.plist"
+
+          mkdir -p build/Payload
+          cp -r "$APP" build/Payload/MagCompanion.app
+
+          cd build
+          ditto -c -k --sequesterRsrc --keepParent Payload MagCompanion.ipa
+          echo "IPA: $(du -sh MagCompanion.ipa)"
+          unzip -l MagCompanion.ipa | head -20
+
+      - name: Upload artifact
+        uses: actions/upload-artifact@v4
+        with:
+          name: MagCompanion-IPA
+          path: build/MagCompanion.ipa
+          retention-days: 30
