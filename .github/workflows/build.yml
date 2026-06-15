@@ -45,12 +45,11 @@ jobs:
 
           KEYCHAIN_PATH=$RUNNER_TEMP/signing.keychain-db
           security create-keychain -p "temp123" "$KEYCHAIN_PATH"
-          security list-keychains -d user -s "$KEYCHAIN_PATH"
           security set-keychain-settings -lut 21600 "$KEYCHAIN_PATH"
           security unlock-keychain -p "temp123" "$KEYCHAIN_PATH"
           security import /tmp/cert.p12 -P temp123 -A -f pkcs12 -k "$KEYCHAIN_PATH"
-          security add-trusted-cert -d -r trustRoot -p codeSign -k "$KEYCHAIN_PATH" /tmp/cert.pem
-          security set-key-partition-list -S apple-tool:,apple:,codesign: -s -k "temp123" "$KEYCHAIN_PATH"
+          # Aggiunge il keychain temporaneo alla lista senza rimuovere quelli esistenti
+          security list-keychains -d user -s "$KEYCHAIN_PATH" $(security list-keychains -d user | tr -d '"')
 
           echo "KEYCHAIN_PATH=$KEYCHAIN_PATH" >> $GITHUB_ENV
           echo "Identità disponibili:"
