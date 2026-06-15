@@ -19,35 +19,41 @@ jobs:
       - name: Genera progetto Xcode
         run: xcodegen generate
 
-      - name: Archive (ad-hoc sign per ottenere il binary)
+      - name: Build unsigned
         run: |
-          xcodebuild archive \
+          xcodebuild \
             -scheme MagCompanion \
             -configuration Release \
             -sdk iphoneos \
             -destination "generic/platform=iOS" \
-            -archivePath "$PWD/build/MagCompanion.xcarchive" \
-            CODE_SIGN_IDENTITY="-" \
+            -derivedDataPath "$PWD/build/derived" \
+            CODE_SIGN_IDENTITY="" \
             CODE_SIGNING_REQUIRED=NO \
-            CODE_SIGNING_ALLOWED=YES \
-            SKIP_INSTALL=NO \
-            ENABLE_BITCODE=NO
+            CODE_SIGNING_ALLOWED=NO \
+            ONLY_ACTIVE_ARCH=NO \
+            ENABLE_BITCODE=NO \
+            build
 
-      - name: Debug contenuto archivio
+      - name: Debug output
         run: |
-          echo "=== Struttura xcarchive ==="
-          find build/MagCompanion.xcarchive -maxdepth 6 | head -40
-          echo "=== Binary presente? ==="
-          file build/MagCompanion.xcarchive/Products/Applications/MagCompanion.app/MagCompanion 2>&1 || echo "NON TROVATO al path standard"
+          echo "=== Prodotti build ==="
+          find build/derived/Build/Products -maxdepth 4 2>/dev/null | head -40 || echo "(vuoto)"
+          echo "=== Binary check ==="
+          APP="build/derived/Build/Products/Release-iphoneos/MagCompanion.app"
+          file "$APP/MagCompanion" 2>&1 || echo "BINARY NON TROVATO al path standard"
+          echo "=== Info.plist nel .app ==="
+          cat "$APP/Info.plist" 2>&1 || echo "PLIST NON TROVATO"
 
-      - name: Crea IPA dall'archivio
+      - name: Crea IPA
         run: |
-          APP=$(find build/MagCompanion.xcarchive -name "*.app" -type d | head -1)
-          echo "App trovata: $APP"
+          APP=$(find build/derived/Build/Products -name "MagCompanion.app" -type d | head -1)
+          echo "App: $APP"
           mkdir -p build/Payload
-          cp -r "$APP" build/Payload/
+          cp -r "$APP" build/Payload/MagCompanion.app
           cd build && zip -r MagCompanion.ipa Payload/
           echo "IPA: $(du -sh MagCompanion.ipa)"
+          echo "=== Contenuto IPA ==="
+          unzip -l MagCompanion.ipa | head -20
 
       - name: Upload artifact
         uses: actions/upload-artifact@v4
