@@ -19,7 +19,44 @@ jobs:
       - name: Genera progetto Xcode
         run: xcodegen generate
 
-      - name: Build unsigned
+      - name: Crea certificato self-signed temporaneo
+        run: |
+          cat > /tmp/cert.conf << 'EOF'
+          [req]
+          distinguished_name = req_dn
+          x509_extensions = v3_req
+          prompt = no
+          [req_dn]
+          CN = iPhone Developer
+          [v3_req]
+          keyUsage = critical, digitalSignature
+          extendedKeyUsage = critical, codeSigning
+          basicConstraints = critical, CA:false
+          EOF
+
+          openssl req -x509 -newkey rsa:2048 \
+            -keyout /tmp/key.pem -out /tmp/cert.pem \
+            -days 1 -nodes -config /tmp/cert.conf
+
+          openssl pkcs12 -export \
+            -out /tmp/cert.p12 \
+            -inkey /tmp/key.pem -in /tmp/cert.pem \
+            -passout pass:temp123 -legacy
+
+          KEYCHAIN_PATH=$RUNNER_TEMP/signing.keychain-db
+          security create-keychain -p "temp123" "$KEYCHAIN_PATH"
+          security list-keychains -d user -s "$KEYCHAIN_PATH"
+          security set-keychain-settings -lut 21600 "$KEYCHAIN_PATH"
+          security unlock-keychain -p "temp123" "$KEYCHAIN_PATH"
+          security import /tmp/cert.p12 -P temp123 -A -f pkcs12 -k "$KEYCHAIN_PATH"
+          security add-trusted-cert -d -r trustRoot -p codeSign -k "$KEYCHAIN_PATH" /tmp/cert.pem
+          security set-key-partition-list -S apple-tool:,apple:,codesign: -s -k "temp123" "$KEYCHAIN_PATH"
+
+          echo "KEYCHAIN_PATH=$KEYCHAIN_PATH" >> $GITHUB_ENV
+          echo "Identità disponibili:"
+          security find-identity -v "$KEYCHAIN_PATH"
+
+      - name: Build
         run: |
           xcodebuild \
             -scheme MagCompanion \
@@ -27,9 +64,9 @@ jobs:
             -sdk iphoneos \
             -destination "generic/platform=iOS" \
             -derivedDataPath "$PWD/build/derived" \
-            CODE_SIGN_IDENTITY="" \
+            CODE_SIGN_IDENTITY="iPhone Developer" \
             CODE_SIGNING_REQUIRED=NO \
-            CODE_SIGNING_ALLOWED=NO \
+            CODE_SIGNING_ALLOWED=YES \
             ONLY_ACTIVE_ARCH=NO \
             ENABLE_BITCODE=NO \
             build
@@ -37,27 +74,19 @@ jobs:
       - name: Crea IPA
         run: |
           APP=$(find build/derived/Build/Products -name "MagCompanion.app" -type d | head -1)
-          echo "App trovata: $APP"
+          echo "App: $APP"
+          ls -la "$APP/"
 
-          if [ -z "$APP" ]; then
-            echo "ERROR: MagCompanion.app non trovata in derived data"
-            find build/derived -maxdepth 6 | head -30
+          if [ ! -f "$APP/MagCompanion" ]; then
+            echo "ERROR: binary non trovato, cerco ovunque..."
+            find build/derived -name "MagCompanion" -type f 2>/dev/null | head -10
             exit 1
           fi
 
-          # Verifica binary
-          BINARY="$APP/MagCompanion"
-          if [ ! -f "$BINARY" ]; then
-            echo "ERROR: binary non trovato"
-            ls -la "$APP/"
-            exit 1
-          fi
-          echo "Binary: $(file "$BINARY")"
+          echo "Binary: $(file "$APP/MagCompanion")"
 
-          # Sostituisce il plist compilato (potrebbe essere corrotto) con il sorgente noto-buono
+          # Sostituisce Info.plist con il sorgente noto-buono
           cp MagCompanion/Info.plist "$APP/Info.plist"
-          echo "Info.plist copiato:"
-          cat "$APP/Info.plist"
 
           mkdir -p build/Payload
           cp -r "$APP" build/Payload/MagCompanion.app
