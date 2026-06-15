@@ -41,7 +41,7 @@ jobs:
           openssl pkcs12 -export \
             -out /tmp/cert.p12 \
             -inkey /tmp/key.pem -in /tmp/cert.pem \
-            -passout pass:temp123 -legacy
+            -passout pass:temp123
 
           KEYCHAIN_PATH=$RUNNER_TEMP/signing.keychain-db
           security create-keychain -p "temp123" "$KEYCHAIN_PATH"
