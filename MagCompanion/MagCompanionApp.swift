@@ -25,7 +25,9 @@ final class MagController: NSObject, ObservableObject {
     @Published var bleStatus  = "In attesa del Quest…"
     @Published var isStreaming = false
     @Published var hz: Int    = 0
-    @Published var bx: Float  = 0, by: Float = 0, bz: Float = 0
+    @Published var bx: Float = 0
+    @Published var by: Float = 0
+    @Published var bz: Float = 0
 
     // CoreBluetooth
     private var peripheralMgr: CBPeripheralManager!
@@ -190,7 +192,7 @@ extension MagController: CBPeripheralManagerDelegate {
 private extension Data {
     mutating func appendLE<T: FixedWidthInteger>(_ v: T) {
         var le = v.littleEndian
-        append(contentsOf: withUnsafeBytes(of: &le, Array.init))
+        append(contentsOf: Swift.withUnsafeBytes(of: &le, Array.init))
     }
     mutating func appendLE(_ v: Float) {
         appendLE(v.bitPattern)
